@@ -28,6 +28,7 @@ required_pkg dbus-dev
 required_pkg docbook-xsl
 required_pkg doxygen
 required_pkg flex
+required_pkg flock
 required_pkg gcc
 required_pkg gettext
 required_pkg git
