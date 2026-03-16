@@ -2,7 +2,9 @@
 //
 // This needs to be in the global lib so it can be run from
 // a parallel Map
-def call(String agentName, Map info)
+// realNode might not match agentName if the node is updated using ansible
+//    on built-in, but we still need to know it
+def update_node(String agentName, Map info, String realNode)
 {
     println("Running updateOSNode on ${agentName}")
 
@@ -33,6 +35,33 @@ def call(String agentName, Map info)
 	    info['stages_fail_nodes'] += "${agentName} "
 	    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
 		shNoTrace("exit 1", "Marking this stage as a failure")
+	    }
+	}
+    }
+    // Force a re-connect
+    disconnect_node(realNode)
+}
+
+// Polymorph it until everything is on ansible
+def call(String agentName, Map info)
+{
+    update_node(agentName, info, agentName)
+}
+
+def call(String agentName, Map info, String realNode)
+{
+    update_node(agentName, info, realNode)
+}
+
+def disconnect_node(String nodeName)
+{
+    node('built-in') {
+	if (nodeName != 'built-in') {
+	    for (aSlave in hudson.model.Hudson.instance.slaves) {
+		def computer = aSlave.getComputer();
+		if (computer.name == nodeName) {
+		    computer.doDoDisconnect("after update")
+		}
 	    }
 	}
     }

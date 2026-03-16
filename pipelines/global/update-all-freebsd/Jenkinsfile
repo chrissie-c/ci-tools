@@ -21,7 +21,7 @@ def buildFullRunMap(Map info)
 	}
 	if (!downnodes.contains(node)) {
 	    collectBuildEnv[node] = {
-		updateOSNode(node, info)
+		updateOSNode(node, info, n)
 	    }
 	}
     }
