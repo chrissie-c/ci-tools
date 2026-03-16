@@ -8,14 +8,16 @@ def call(String agentName, Map info)
 
     node("${agentName}") {
 	try {
-	    info['stages_run']++;
+	    runWithArtifacts(info, "update_${agentName}.log", {
+		info['stages_run']++;
 
-	    def localinfo = getNodeProperties(agentName)
-	    def exports = getShellVariables(localinfo)
+		def localinfo = getNodeProperties(agentName)
+		def exports = getShellVariables(localinfo)
 
-	    sh """
-	     ${exports} $HOME/ci-tools/ci-wrap bsd-update/pre-update
-	    """
+		sh """
+	         ${exports} $HOME/ci-tools/ci-wrap bsd-update/pre-update
+	        """
+	    })
 	}
 	// Catch any exceptions and record them
 	catch (e) {
