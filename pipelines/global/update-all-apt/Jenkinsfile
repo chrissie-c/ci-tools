@@ -1,0 +1,65 @@
+// Update BaseOS on all apt nodes
+
+@Library(['GlobalLib', 'ProjectLib']) _
+
+def info = [:]
+def project = 'update-all-apt'
+
+// Generate the run-list
+def buildFullRunMap(Map info)
+{
+    def collectBuildEnv = [:]
+    def nodeList = getLabelledNodes(info['packager'])
+    def downnodes = getLabelledNodes('down')
+    println('"Down" nodes: '+downnodes)
+
+    for (n in nodeList) {
+	def node = n
+	if (!downnodes.contains(node)) {
+	    collectBuildEnv[node] = {
+		updateOSNode(node, info)
+	    }
+	}
+    }
+
+    return collectBuildEnv
+}
+
+pipeline {
+    agent { label 'built-in' }
+
+    stages {
+        stage('update BaseOS') {
+            steps {
+		script {
+		    info['project'] = project
+		    info['packager'] = 'apt'
+		    getBuildInfoCommon(info)
+		    info['state'] = 'success'
+		    info['branch'] = ''
+		    info['stages_run'] = 0
+		    info['stages_fail'] = 0
+		    info['stages_fail_nodes'] = ''
+
+		    // Now do all of the other nodes
+		    def updates = buildFullRunMap(info)
+		    try {
+			parallel updates
+			info['state'] = 'completed'
+		    } catch (err) {
+			println("Jenkinsfile caught "+err)
+			info['exception_text'] += "\nparallel error caught: {$err}\n"
+			info['state'] = 'error'
+		    }
+		}
+	    }
+        }
+    }
+
+    // Finish up and send emails
+    post {
+	always {
+	    projectFinishUp(info)
+	}
+    }
+}
