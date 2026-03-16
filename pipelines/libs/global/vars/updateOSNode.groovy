@@ -8,22 +8,24 @@ def call(String agentName, Map info)
 
     node("${agentName}") {
 	try {
-	    info['stages_run']++;
+	    runWithArtifacts(info, "update_${agentName}.log", {
+		info['stages_run']++;
 
-	    def localinfo = getNodeProperties(agentName)
-	    def exports = getShellVariables(localinfo)
+		def localinfo = getNodeProperties(agentName)
+		def exports = getShellVariables(localinfo)
 
-	    // special case freebsd devel that needs ansible from built-in node
-	    if (agentName == 'built-in' && info['packager'] == 'freebsd') {
-		sh """
-		 cd $HOME/ci-tools/bsd-update
-		 ${exports} ./run-update -d
-		"""
-	    } else {
-		sh """
-		 ${exports} $HOME/ci-tools/ci-wrap ci-update-${info['packager']}
-		"""
-	    }
+		// special case freebsd devel that needs ansible from built-in node
+		if (agentName == 'built-in' && info['packager'] == 'freebsd') {
+		    sh """
+		     cd $HOME/ci-tools/bsd-update
+		     ${exports} ./run-update -d
+		    """
+		} else {
+		    sh """
+		     ${exports} $HOME/ci-tools/ci-wrap ci-update-${info['packager']}
+		    """
+		}
+	    })
 	}
 	// Catch any exceptions and record them
 	catch (e) {
