@@ -15,7 +15,12 @@ def call(String agentName, Map info)
 		def exports = getShellVariables(localinfo)
 
 		sh """
-	         ${exports} $HOME/ci-tools/ci-wrap bsd-update/pre-update
+		 rm -f /root/.pre_upgrade_done
+		 cd /usr/src
+		 git pull
+		 make -j $(nproc) buildworld
+		 make -j $(nproc) buildkernel KERNCONF=GENERIC-NODEBUG
+		 touch /root/.pre_upgrade_done
 	        """
 	    })
 	}
