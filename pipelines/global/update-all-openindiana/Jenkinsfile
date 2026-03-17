@@ -13,7 +13,7 @@ def buildFullRunMap(Map info)
     def downnodes = getLabelledNodes('down')
     println('"Down" nodes: '+downnodes)
 
-    for (n in nodeList) {
+    for (def n in nodeList) {
 	def node = n
 	if (!downnodes.contains(node)) {
 	    collectBuildEnv[node] = {

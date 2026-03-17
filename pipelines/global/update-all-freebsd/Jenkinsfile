@@ -13,15 +13,16 @@ def buildFullRunMap(Map info)
     def downnodes = getLabelledNodes('down')
     println('"Down" nodes: '+downnodes)
 
-    for (n in nodeList) {
+    for (def n in nodeList) {
 	def node = n
+	def realnode = n
 	// add exception for freebsd devel that needs to run on built-in node via ansible
 	if (node == 'freebsd-devel-x86-64') {
 	    node = 'built-in'
 	}
 	if (!downnodes.contains(node)) {
 	    collectBuildEnv[node] = {
-		updateOSNode(node, info, n)
+		updateOSNode(node, info, realnode)
 	    }
 	}
     }

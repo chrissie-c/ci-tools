@@ -6,9 +6,12 @@
 //    on built-in, but we still need to know it
 def update_node(String agentName, Map info, String realNode)
 {
-    println("Running updateOSNode on ${agentName}")
+    println("Running updateOSNode on ${realNode}")
 
     node("${agentName}") {
+
+	mark_node_offline(realNode)
+
 	try {
 	    runWithArtifacts(info, "update_${agentName}.log", {
 		info['stages_run']++;
@@ -38,8 +41,8 @@ def update_node(String agentName, Map info, String realNode)
 	    }
 	}
     }
-    // Force a re-connect
-    disconnect_node(realNode)
+
+    reconnect_node(realNode)
 }
 
 // Polymorph it until everything is on ansible
@@ -53,16 +56,60 @@ def call(String agentName, Map info, String realNode)
     update_node(agentName, info, realNode)
 }
 
-def disconnect_node(String nodeName)
+def mark_node_offline(String nodeName)
 {
-    node('built-in') {
-	if (nodeName != 'built-in') {
-	    for (aSlave in hudson.model.Hudson.instance.slaves) {
-		def computer = aSlave.getComputer();
-		if (computer.name == nodeName) {
-		    computer.doDoDisconnect("after update")
-		}
+    for (aSlave in hudson.model.Hudson.instance.slaves) {
+	def computer = aSlave.getComputer();
+	if (computer.name == nodeName) {
+	    println("Mark node ${nodeName} offline")
+	    def offline_cause = new hudson.slaves.OfflineCause.UserCause(User.current(), "offline to update the node")
+	    computer.setTemporaryOfflineCause(offline_cause)
+	    println("Waiting for node ${nodeName} to be offline")
+	    computer.waitUntilOffline()
+	    println("${nodeName} is now offline")
+	    // special case freebsd devel
+	    def workers = 1
+	    if (nodeName == 'freebsd-devel-x86-64') {
+		workers = 0
 	    }
+	    while (computer.countBusy() != workers) {
+		println("Waiting 300 seconds for node ${nodeName} to be idle")
+		sleep(300)
+	    }
+	    println("${nodeName} is idle")
+	}
+    }
+}
+
+def reconnect_node(String nodeName)
+{
+    for (aSlave in hudson.model.Hudson.instance.slaves) {
+	def computer = aSlave.getComputer();
+	if (computer.name == nodeName) {
+	    println("Checking if node ${nodeName} is idle")
+	    while (!computer.isIdle()) {
+		println("Waiting 60 seconds for node ${nodeName} to be idle")
+		sleep(60)
+	    }
+	    println("Node ${nodeName} is idle")
+	    println("Disconnecting ${nodeName}")
+	    def offline_cause = new hudson.slaves.OfflineCause.UserCause(User.current(), "Disconnecting node")
+	    computer.disconnect(offline_cause)
+	    while (computer.isConnected()) {
+		println("Waiting 1 second for node ${nodeName} to be disconnected")
+		sleep(1)
+	    }
+	    println("Connecting ${nodeName}")
+	    computer.connect(true)
+	    while (!computer.isConnected()) {
+		println("Waiting 10 seconds for node ${nodeName} to be connected")
+		sleep(10)
+	    }
+	    println("Mark node ${nodeName} online")
+	    computer.setTemporaryOfflineCause(null)
+	    println("Waiting for node ${nodeName} to be online")
+	    computer.waitUntilOnline()
+	    println("${nodeName} is now online")
 	}
     }
 }
