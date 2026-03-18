@@ -77,11 +77,9 @@ def copy_our_logs(Map info, String staging_dir)
     // tidied up.
     def LOG_URL = env.BUILD_URL.replaceAll('https://haci.fast.eng.rdu2.dc.redhat.com', 'http://localhost:8080')
     sh("curl ${LOG_URL}/consoleText > ${target_logsdir}/consoleText")
-    // Get the artifacts dir (which might be mangled)
-    //    def f = new File("${logsdir}/archive")
-    def f = currentBuild.rawBuild.getArtifactdir()
-    if (f != null && f.exists()) {
-	sh("rsync -atr ${f}/* ${target_logsdir}/artifact/")
+    def f = new File("${logsdir}/archive")
+    if (f.exists()) {
+	sh("rsync -atr ${logsdir}/archive/* ${target_logsdir}/artifact/")
     }
 }
 
@@ -95,9 +93,11 @@ def call(Map info)
 	def staging_dir = "/var/www/ci.kronosnet.org"
 	RWLock(info, "log_archive", "WRITE", "projectFinishUp",
 	       {
-		clean_dirs(info['project'], staging_dir)
+
 		copy_our_logs(info, staging_dir)
+		clean_dirs(info['project'], staging_dir)
 		process_log_dirs(staging_dir)
+
 		rsync_to_external(staging_dir)
 	    })
     }
