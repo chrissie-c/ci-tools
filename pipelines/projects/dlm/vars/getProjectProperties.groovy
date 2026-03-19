@@ -14,7 +14,7 @@ def call(Map localinfo, String agentName)
 	props['RPMDEPS'] = 'corosynclib-devel pacemaker-libs-devel'
     }
 
-    if (agentName.startsWith('rhel')) {
+    if (agentName.startsWith('alpine')) {
 	props['MAKEOPTS'] = 'USE_SD_NOTIFY=no'
     }
 
