@@ -78,6 +78,7 @@ if [ -f ./configure ]; then
     booth)
      installpath=${installpath}-pacemaker-${pacemakerver}/
      extraopts="--with-ocfdir=$installpath/lib/ocf"
+     export CONFIG_SHELL=$(which bash)
      ;;
     *)
      installpath=${installpath}/

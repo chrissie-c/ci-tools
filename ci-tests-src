@@ -108,6 +108,7 @@ case "${project}" in
  ;;
  booth)
   extraopts="--with-ocfdir=\$$\{prefix\}/lib/ocf"
+  export CONFIG_SHELL=$(which bash)
  ;;
  kronosnet|corosync)
   if [ -n "$RUSTBINDINGS" ] && [ "$RUSTBINDINGS" = yes ]; then
