@@ -1,76 +1,64 @@
-// Jenkinsfile for building anvil cache
+// Update anvil cache on all anvil-bm nodes
 
 @Library(['GlobalLib', 'ProjectLib']) _
 
-// Globals
-def project = 'anvil'
-def info = ['project': project]
+def info = [:]
+def project = 'anvil-build-cache'
 
-String[] distros = ['almalinux-9', 'rhel-9']
+// Generate the run-list
+def buildFullRunMap(Map info)
+{
+    def collectBuildEnv = [:]
+    def nodeList = getLabelledNodes('anvil-bm')
+    def downnodes = getLabelledNodes('down')
+    println('"Down" nodes: '+downnodes)
+
+    for (n in nodeList) {
+	def node = n
+	if (!downnodes.contains(node)) {
+	    collectBuildEnv[node] = {
+		anvil_update_node_cache(node, info)
+	    }
+	}
+    }
+
+    return collectBuildEnv
+}
 
 pipeline {
     agent { label 'built-in' }
 
-    options {
-	skipDefaultCheckout(true)
+    stages {
+        stage('update anvil-bm cache') {
+            steps {
+		script {
+		    info['project'] = project
+		    getBuildInfoCommon(info)
+		    info['state'] = 'success'
+		    info['branch'] = ''
+		    info['stages_run'] = 0
+		    info['stages_fail'] = 0
+		    info['stages_fail_nodes'] = ''
+
+		    // Now do all of the other nodes
+		    def updates = buildFullRunMap(info)
+		    try {
+			parallel updates
+			info['state'] = 'completed'
+		    } catch (err) {
+			println("Jenkinsfile caught "+err)
+			info['exception_text'] += "\nparallel error caught: {$err}\n"
+			info['state'] = 'error'
+		    }
+		}
+	    }
+        }
     }
 
-    stages {
-	stage('Initialisation') {
-	    steps {
-		println('Initialising variables')
-		getBuildInfoCommon(info)
-	    }
-	}
-	stage('Update cache matrix') {
-
-	    matrix {
-		agent {
-		    label "${PLATFORM}"
-		}
-		axes {
-		    axis {
-			name 'PLATFORM'
-			values 'anvil-ci-bm-phy02', 'anvil-ci-bm-phy03', 'anvil-ci-bm-phy04', 'anvil-ci-bm-phy05', 'anvil-ci-bm-phy06', 'anvil-ci-bm-phy07'
-		    }
-	        }
-
-		stages('Update cache node') {
-		    stage('Update cache') {
-			steps {
-			    script {
-				stage("Prep build env ${PLATFORM}") {
-				    cleanWs(disableDeferredWipeout: true, deleteDirs: true)
-				    sh """
-					$HOME/ci-tools/ci-destroy-anvil-bm-vm
-				    """
-			    	}
-				for (distro in distros) {
-				    info['state'] = 'success'
-				    stage("Build cache ${PLATFORM} ${distro}") {
-					try {
-					    sh """
-						$HOME/ci-tools/ci-setup-anvil-bm-vm-cache ${distro} none none
-					    """
-					}
-					catch(err) {
-					    info['state'] = 'failure'
-					}
-					info['branch'] = "cache ${PLATFORM} ${distro}"
-					projectFinishUp(info)
-				    }
-				}
-				stage("Clean build env ${PLATFORM}") {
-				    cleanWs(disableDeferredWipeout: true, deleteDirs: true)
-				    sh """
-					$HOME/ci-tools/ci-destroy-anvil-bm-vm
-				    """
-				}
-			    }
-			}
-		    }
-		}
-	    }
+    // Finish up and send emails
+    post {
+	always {
+	    projectFinishUp(info)
 	}
     }
 }
