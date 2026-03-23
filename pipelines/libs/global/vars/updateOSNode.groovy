@@ -61,6 +61,7 @@ def disconnect_node(String nodeName)
 		def computer = aSlave.getComputer();
 		if (computer.name == nodeName) {
 		    computer.doDoDisconnect("after update")
+		    computer.waitUntilOnline()
 		}
 	    }
 	}
