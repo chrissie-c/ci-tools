@@ -7,6 +7,8 @@ def call (Map info, String logfile, Closure cmd)
     def new_logfile = ''
     def caught_exception = null
 
+    info['have_split_logs'] = true
+
     try {
 	tee (logfile) {
 	    cmd()
