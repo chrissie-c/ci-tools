@@ -1,0 +1,87 @@
+// Update anvil external dependencies repos
+
+@Library(['GlobalLib', 'GithubLib', 'ProjectLib']) _
+
+def info = [:]
+def project = 'anvil-build-dep-repos'
+
+// Generate the run-list
+def buildFullRunMap(Map info)
+{
+    def collectBuildEnv = [:]
+    def nodeList = getLabelledNodes('anvil')
+    def downnodes = getLabelledNodes('down')
+    println('"Down" nodes: '+downnodes)
+
+    for (n in nodeList) {
+	def node = n
+	if (!downnodes.contains(node)) {
+	    collectBuildEnv[node] = {
+		anvil_build_dep_repos(node, info)
+	    }
+	}
+    }
+
+    return collectBuildEnv
+}
+
+pipeline {
+    agent { label 'built-in' }
+
+    stages {
+	stage('Setup build env') {
+            steps {
+		script {
+		    getBuildInfo(project, info)
+		    info['state'] = 'success'
+		    info['branch'] = ''
+		    info['stages_run'] = 0
+		    info['stages_fail'] = 0
+		    info['stages_fail_nodes'] = ''
+		}
+	    }
+	}
+        stage('build external deps repos') {
+            steps {
+		script {
+		    // Now do all of the other nodes
+		    def updates = buildFullRunMap(info)
+		    try {
+			parallel updates
+			info['state'] = 'completed'
+		    } catch (err) {
+			println("Jenkinsfile caught "+err)
+			info['exception_text'] += "\nparallel error caught: {$err}\n"
+			info['state'] = 'error'
+		    }
+		}
+	    }
+        }
+	stage('functional testing') {
+	    steps {
+		script {
+		    def fntesting = doBuildJob("anvil/anvil-build-dep-repos-functional-testing", [], info)
+
+		    def buildnumber = fntesting.getNumber()
+
+		    if (fntesting.result != 'SUCCESS') {
+			info['email_extra_text'] = "\nfunctional testing failed:\n"
+			catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+			    shNoTrace("exit 1", "Marking this stage as a failure")
+			}
+		    } else {
+			info['email_extra_text'] = "\nfunctional testing results:\n"
+		    }
+		    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-all-functional-testing/${buildnumber}/\n"
+		}
+	    }
+	}
+    }
+
+    // Finish up and send emails
+    post {
+	always {
+	    projectFinishUp(info)
+	}
+    }
+}
