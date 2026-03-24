@@ -30,6 +30,14 @@ def update_node(String agentName, Map info, String realNode)
 		     ${exports} $HOME/ci-tools/ci-wrap ci-update-${info['packager']}
 		    """
 		}
+
+		// special case anvil bm nodes and save a whole pipeline to be plugged around
+		if (agentName.startsWith('anvil-ci-bm-phy')) {
+		    sh """
+		     ${exports} $HOME/ci-tools/ci-wrap ci-destroy-anvil-bm-vm || true
+		     ${exports} $HOME/ci-tools/ci-wrap ci-setup-anvil-bm
+		    """
+		}
 	    })
 	}
 	// Catch any exceptions and record them
