@@ -1,0 +1,120 @@
+// Run all the weekly jobs
+// ...and others if asked nicely
+
+@Library(['GlobalLib', 'ProjectLib']) _
+
+def info = [:]
+def project = 'all-weekly'
+
+def joblist = [
+    'prep-updates': ['global/update-freebsd-devel',
+		     'anvil/anvil-build-ci-repo'],
+    'update-nodes': ['global/update-all-apk',
+		     'global/update-all-apt',
+		     'global/update-all-freebsd',
+		     'global/update-all-openindiana',
+		     'global/update-all-yum'],
+    'projects': ['booth/booth-pipeline/main;fullrebuild=1',
+		 'corosync/corosync-pipeline/camelback;fullrebuild=1',
+		 'corosync/corosync-pipeline/main;fullrebuild=1',
+		 'corosync-qdevice/corosync-qdevice-pipeline/main;fullrebuild=1',
+		 'dlm/dlm-pipeline;fullrebuild=1',
+		 'fence-agents/fence-agents-pipeline/main;fullrebuild=1',
+		 'gfs2-utils/gfs2-utils-pipeline;fullrebuild=1',
+		 'kernel-ark/kernel-ark-pipeline/os-build',
+		 'kronosnet/kronosnet-pipeline/main;fullrebuild=1',
+		 'kronosnet/kronosnet-pipeline/stable1;fullrebuild=1',
+		 'kronosnet/kronosnet-pipeline/stable1-proposed;fullrebuild=1',
+		 'libqb/libqb-pipeline/main;fullrebuild=1',
+		 'pacemaker/pacemaker-pipeline/2.1;fullrebuild=1',
+		 'pacemaker/pacemaker-pipeline/3.0;fullrebuild=1',
+		 'pacemaker/pacemaker-pipeline/main;fullrebuild=1',
+		 'pcs/pcs-pipeline/main;fullrebuild=1',
+		 'pcs/pcs-pipeline/pcs-0.10;fullrebuild=1',
+		 'pcs/pcs-pipeline/pcs-0.11;fullrebuild=1',
+		 'resource-agents/resource-agents-pipeline/main;fullrebuild=1',
+		 'sbd/sbd-pipeline/main;fullrebuild=1',
+		 'global/ha-functional-testing-weekly;tests=smoke'
+    ]
+]
+
+pipeline {
+    agent { label 'built-in' }
+
+    parameters {
+	string(name: 'prejobs', defaultValue: '', description: 'Comma-separated list of jobs to run before the main stages (use semicolons for params). leave blank for none')
+	string(name: 'stages', defaultValue: 'all', description: 'Comma-separated list of stages to run (in order) prep-updates, update-nodes, projects, or all. leave blank for none if you just want to run manual jobs')
+	string(name: 'postjobs', defaultValue: '', description: 'Comma-separated list of jobs to run after the main stages (use semicolons for params). leave blank for none')
+    }
+
+    stages {
+        stage('setup') {
+            steps {
+		script {
+		    info['project'] = project
+		    getBuildInfoCommon(info)
+		    info['state'] = 'completed'
+		    info['branch'] = ''
+		    info['stages_run'] = 0
+		    info['stages_fail'] = 0
+		    info['stages_fail_nodes'] = ''
+		}
+	    }
+	}
+	stage('run things') {
+	    steps {
+		script {
+		    // Build the list of what to run
+		    def runstages = [:]
+
+		    if (params['prejobs'] != '') {
+			// Explicit type needed here
+			def ArrayList prejobsarray = params['prejobs'].split(',')
+			runstages['prejobs'] = prejobsarray
+		    }
+
+		    for (def jl in joblist) {
+			if (params['stages'] == 'all' ||
+			    params['stages'].contains(jl.key)) {
+			    runstages[jl.key] = jl.value
+			}
+		    }
+
+		    if (params['postjobs'] != '') {
+			// Explicit type needed here
+			def ArrayList postjobsarray = params['postjobs'].split(',')
+			runstages['postjobs'] = postjobsarray
+		    }
+
+		    println("We will run: ${runstages}")
+		    // Run everything in the list
+		    for (def i in runstages) {
+			def name = i.key
+			def jobs = i.value
+			stage (name) {
+			    def runmap = buildGenericRunMap(info, jobs)
+			    try {
+				parallel runmap
+			    } catch (err) {
+				println("${name} jobs caught error "+err)
+				info['state'] = 'error'
+			    }
+			}
+		    }
+		}
+	    }
+	}
+    }
+
+    // Finish up and send emails etc
+    post {
+	failure {
+            script {
+		info['state'] = 'failure'
+	    }
+	}
+	always {
+	    projectFinishUp(info)
+	}
+    }
+}
