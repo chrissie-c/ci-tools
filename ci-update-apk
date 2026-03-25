@@ -16,6 +16,7 @@ required_pkg autoconf
 required_pkg automake
 required_pkg bison
 required_pkg check
+required_pkg check-dev
 required_pkg chrpath
 required_pkg clang
 required_pkg clang-libclang
