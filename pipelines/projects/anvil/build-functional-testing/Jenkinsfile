@@ -1,0 +1,92 @@
+// Jenkinsfile for running anvil functional testing
+
+@Library(['GlobalLib', 'ProjectLib']) _
+
+// Globals
+def project = 'anvil-build-functional-testing'
+def info = ['project': project, 'branch': '']
+
+def run_fn_testing(Map info)
+{
+    sh """
+     $HOME/ci-tools/ci-wrap ci-setup-anvil-bm-vm ${info['BASEDISTRO']} ${info['REPOSRC']} ${info['ANVILSRC']} ${info['TESTS']}
+    """
+}
+
+pipeline {
+    agent { label 'anvil-bm' }
+
+    parameters {
+	string(name: 'BASEDISTRO',   defaultValue: 'almalinux-9', description: 'Test distro almalinux-9 or rhel-9')
+	string(name: 'REPOSRC',   defaultValue: 'ci', description: 'repo to use for external dependencies: ci / enterprise / enterprise-staging')
+	string(name: 'ANVILSRC',   defaultValue: 'ci', description: 'repo to use for anvil: ci / none')
+	string(name: 'TESTS',   defaultValue: 'all', description: '')
+    }
+
+    options {
+	skipDefaultCheckout(true)
+    }
+
+    stages {
+	// First check we are allowed to run, then set some params for that run
+	stage('Prep build env') {
+	    steps {
+		script {
+		    cleanWs(disableDeferredWipeout: true, deleteDirs: true)
+		    getBuildInfoCommon(info)
+		    info['BASEDISTRO'] = "${params.BASEDISTRO}"
+		    info['REPOSRC'] = "${params.REPOSRC}"
+		    info['ANVILSRC'] = "${params.ANVILSRC}"
+		    info['TESTS'] = "${params.TESTS}"
+		}
+	    }
+	}
+	stage('Run functional testing') {
+	    steps {
+		script {
+		    def stagestate = [:]
+		    def timeout = 360
+		    stagestate['runstage'] = 'fn testing'
+		    def rc = runWithTimeout(timeout, { run_fn_testing(info) }, stagestate,
+					    { processRunSuccess(info, stagestate) },
+					    { processRunException(info, stagestate) })
+		    if (rc != 'OK') {
+			println("RC runWithTimeout returned "+rc)
+			shNoTrace("exit 1", "Marking this stage as a failure")
+			return false
+		    }
+		}
+	    }
+	}
+    }
+    post {
+	success {
+	    script {
+		info['state'] = 'success'
+		projectFinishUp(info)
+	    }
+	}
+	failure {
+	    script {
+		info['state'] = 'failure'
+		projectFinishUp(info)
+	    }
+	}
+	always {
+	    cleanWs(disableDeferredWipeout: true, deleteDirs: true)
+	}
+    }
+}
+
+def processRunSuccess(Map info, Map stagestate)
+{
+    stagestate['failed'] = false
+}
+
+def processRunException(Map info, Map stagestate)
+{
+    stagestate['failed'] = true
+    if (stagestate['RET'] == 'ABORT') {
+	currentBuild.result = 'ABORTED'
+    }
+}
