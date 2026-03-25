@@ -78,7 +78,7 @@ pipeline {
 			    } else {
 				info['email_extra_text'] += "\nalmalinux-9 functional testing results:\n"
 			    }
-			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-testing/${buildnumber}/consoleText\n"
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
 			}
 		    }
 		}
@@ -100,7 +100,7 @@ pipeline {
 			    } else {
 				info['email_extra_text'] += "\nrhel-9 functional testing results:\n"
 			    }
-			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-testing/${buildnumber}/consoleText\n"
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
 			}
 		    }
 		}
