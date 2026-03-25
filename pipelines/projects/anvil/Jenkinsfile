@@ -40,6 +40,7 @@ pipeline {
 			anviltests = 'all,skip_advanced_servers,skip_update'
 			info['is_draft'] = false
 		    }
+		    info['email_extra_text'] = ''
 		}
 	    }
 	}
@@ -74,39 +75,159 @@ pipeline {
 	    }
 	}
 
-        // Build the RPM/Coverity repos etc. If the job failed, this is what tells Jenkins
+	stage('Run functional testing') {
+	    when {
+		expression { info['authcheck'] == true && info['is_draft'] == false && info['bootstrap'] == 0 && info['target'] == 'main'}
+	    }
+	    parallel {
+		stage("almalinux-9 ci") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "almalinux-9"),
+							string(name: 'REPOSRC', value: "ci"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nalmalinux-9 ci ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nalmalinux-9 ci ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+		stage("rhel-9 ci") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "rhel-9"),
+							string(name: 'REPOSRC', value: "ci"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nrhel-9 ci ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nrhel-9 ci ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+		stage("almalinux-9 enterprise-staging") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "almalinux-9"),
+							string(name: 'REPOSRC', value: "enterprise-staging"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nalmalinux-9 enterprise-staging ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nalmalinux-9 enterprise-staging ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+		stage("rhel-9 enterprise-staging") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "rhel-9"),
+							string(name: 'REPOSRC', value: "enterprise-staging"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nrhel-9 enterprise-staging ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nrhel-9 enterprise-staging ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+		stage("almalinux-9 enterprise") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "almalinux-9"),
+							string(name: 'REPOSRC', value: "enterprise"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nalmalinux-9 enterprise ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nalmalinux-9 enterprise ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+		stage("rhel-9 enterprise") {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "rhel-9"),
+							string(name: 'REPOSRC', value: "enterprise"),
+							string(name: 'ANVILSRC', value: "${anvilsrc}"),
+							string(name: 'TESTS', value: "${anviltests}")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nrhel-9 enterprise ${anvilsrc} functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nrhel-9 enterprise ${anvilsrc} functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-functional-testing/${buildnumber}/consoleText\n"
+			}
+		    }
+		}
+	    }
+	}
+
+	// Build the RPM/Coverity repos etc. If the job failed, this is what tells Jenkins
 	stage('Post Stage') {
 	    when {
 		expression { info['authcheck'] == true && info['is_draft'] == false }
 	    }
 	    steps {
 		postStage(info)
-	    }
-	}
-
-	stage('functional testing') {
-	    when {
-		expression { info['authcheck'] == true && info['is_draft'] == false && info['bootstrap'] == 0 && info['target'] == 'main'}
-	    }
-	    steps {
-		script {
-		    def fntesting = doBuildJob("${project}/${project}-build-all-functional-testing",
-					       [string(name: 'ANVILSRC', value: "${anvilsrc}"),
-						string(name: 'TESTS', value: "${anviltests}")],
-					       info)
-
-		    def buildnumber = fntesting.getNumber()
-
-		    if (fntesting.result != 'SUCCESS') {
-			info['email_extra_text'] = "\nfunctional testing failed:\n"
-			catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-			    shNoTrace("exit 1", "Marking this stage as a failure")
-			}
-		    } else {
-			info['email_extra_text'] = "\nfunctional testing results:\n"
-		    }
-		    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-all-functional-testing/${buildnumber}/\n"
-		}
 	    }
 	}
     }
