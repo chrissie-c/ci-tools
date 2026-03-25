@@ -38,6 +38,7 @@ pipeline {
 		    info['stages_run'] = 0
 		    info['stages_fail'] = 0
 		    info['stages_fail_nodes'] = ''
+		    info['email_extra_text'] = ''
 		}
 	    }
 	}
@@ -57,22 +58,51 @@ pipeline {
 		}
 	    }
         }
-	stage('functional testing') {
-	    steps {
-		script {
-		    def fntesting = doBuildJob("anvil/anvil-build-dep-repos-functional-testing", [], info)
+	stage('Run functional testing') {
+	    parallel {
+		stage('almalinux-9 ci ci') {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "almalinux-9"),
+							string(name: 'REPOSRC', value: "ci"),
+							string(name: 'ANVILSRC', value: "ci")], info)
 
-		    def buildnumber = fntesting.getNumber()
+			    def buildnumber = fntesting.getNumber()
 
-		    if (fntesting.result != 'SUCCESS') {
-			info['email_extra_text'] = "\nfunctional testing failed:\n"
-			catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-			    shNoTrace("exit 1", "Marking this stage as a failure")
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nalmalinux-9 functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nalmalinux-9 functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-testing/${buildnumber}/consoleText\n"
 			}
-		    } else {
-			info['email_extra_text'] = "\nfunctional testing results:\n"
 		    }
-		    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-all-functional-testing/${buildnumber}/\n"
+		}
+		stage('rhel-9 ci ci') {
+		    steps {
+			script {
+			    def fntesting = doBuildJob("anvil/anvil-build-functional-testing",
+						       [string(name: 'BASEDISTRO', value: "rhel-9"),
+							string(name: 'REPOSRC', value: "ci"),
+							string(name: 'ANVILSRC', value: "ci")], info)
+
+			    def buildnumber = fntesting.getNumber()
+
+			    if (fntesting.result != 'SUCCESS') {
+				info['email_extra_text'] += "\nrhel-9 functional testing failed:\n"
+				catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+				    shNoTrace("exit 1", "Marking this stage as a failure")
+				}
+			    } else {
+				info['email_extra_text'] += "\nrhel-9 functional testing results:\n"
+			    }
+			    info['email_extra_text'] += "https://ci.kronosnet.org/job/anvil/job/anvil-build-testing/${buildnumber}/consoleText\n"
+			}
+		    }
 		}
 	    }
 	}
