@@ -67,7 +67,7 @@ def remove_old_job_logs(String staging_dir, String job_staging_dir, ArrayList je
 
 	// Sanity check before we do rm -rf
 	if (! found && job_staging_dir.length() > 12) {
-	    sh("echo rm -rfv ${job_staging_dir}/${spath}")
+	    sh("rm -rfv ${job_staging_dir}/${spath}")
 	}
     }
 }
@@ -80,7 +80,7 @@ def rsync_to_external(String staging_dir)
        """)
 }
 
-    // Copy the logs the staging area in a hierarchy suitable for web use
+// Copy the logs the staging area in a hierarchy suitable for web use
 def copy_our_logs(Map info, String staging_dir)
 {
     def job_bits = env.JOB_NAME.split('/')
@@ -138,16 +138,19 @@ def call(Map info)
 {
     node('built-in') {
 	def staging_dir = '/var/www/ci.kronosnet.org'
+
+	// 'project' needs to be the actual top-level project name, not what's in info['project']
 	def project = env.JOB_NAME.split('/')[0]
 	RWLock(info, "log_archive", "WRITE", "projectFinishUp",
 	       {
+		// Copy the jobs from this job
 		def (job_staging_dir, job_jenkins_dir, recurse) = copy_our_logs(info, staging_dir)
-		def jenkins_jobs = get_all_jobs_for_project(project)
 
 		// Remove empty dirs
 		clean_dirs(project, staging_dir)
 
 		// Remove job & build logs that have been removed from jenkins
+		def jenkins_jobs = get_all_jobs_for_project(project)
 		if (recurse) {
 		    recurse_branches(staging_dir, job_staging_dir, jenkins_jobs)
 		} else
