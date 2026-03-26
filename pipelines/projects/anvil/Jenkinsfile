@@ -75,6 +75,16 @@ pipeline {
 	    }
 	}
 
+	// Build the RPM/Coverity repos etc. If the job failed, this is what tells Jenkins
+	stage('Post Stage') {
+	    when {
+		expression { info['authcheck'] == true && info['is_draft'] == false }
+	    }
+	    steps {
+		postStage(info)
+	    }
+	}
+
 	stage('Run functional testing') {
 	    when {
 		expression { info['authcheck'] == true && info['is_draft'] == false && info['bootstrap'] == 0 && info['target'] == 'main'}
@@ -218,16 +228,6 @@ pipeline {
 			}
 		    }
 		}
-	    }
-	}
-
-	// Build the RPM/Coverity repos etc. If the job failed, this is what tells Jenkins
-	stage('Post Stage') {
-	    when {
-		expression { info['authcheck'] == true && info['is_draft'] == false }
-	    }
-	    steps {
-		postStage(info)
 	    }
 	}
     }
