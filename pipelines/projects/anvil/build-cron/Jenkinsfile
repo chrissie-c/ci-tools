@@ -2,17 +2,22 @@
 
 @Library(['GlobalLib', 'ProjectLib']) _
 
-def info = [:]
 def project = 'anvil-build-cron'
+def info = ['project': project, 'branch': 'cron']
 
 pipeline {
     agent { label 'built-in' }
+
+    options {
+	skipDefaultCheckout(true)
+    }
 
     stages {
 	stage('Setup build env') {
             steps {
 		script {
-		    getBuildInfoCommon(project, info)
+		    cleanWs(disableDeferredWipeout: true, deleteDirs: true)
+		    getBuildInfoCommon(info)
 		    info['state'] = 'success'
 		    info['branch'] = ''
 		    info['stages_run'] = 0
