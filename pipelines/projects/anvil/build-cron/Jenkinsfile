@@ -12,7 +12,7 @@ pipeline {
 	stage('Setup build env') {
             steps {
 		script {
-		    getBuildInfo(project, info)
+		    getBuildInfoCommon(project, info)
 		    info['state'] = 'success'
 		    info['branch'] = ''
 		    info['stages_run'] = 0
