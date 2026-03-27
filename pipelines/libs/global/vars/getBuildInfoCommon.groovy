@@ -55,7 +55,7 @@ def call(Map info)
     if (currentBuild.getBuildCauses().shortDescription.size() > 0) {
 	runreason = currentBuild.getBuildCauses().shortDescription[0]
     }
-    if (!runreason.startsWith('Started by upstream project "global/reinstall-all-manual') &&
+    if (!runreason.startsWith('Started by upstream project "global/reinstall-all') &&
 	!runreason.startsWith('Started by user')) {
 	lock('MAINTENANCE LOCKOUT') {
 	    // We don't need to do anything here. just know that we're not locked out
