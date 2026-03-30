@@ -310,9 +310,9 @@ def run_job(String provider, Map job, String dryrun, Map info)
 	echo "Running job for ${name} on ${provider}, testlist = ${testlist}"
 
 	def thisjob = doBuildJob('global/ha-functional-testing',
-				 [[$class: 'LabelParameterValue', name: 'provider', label: provider],
+				 [string(name: 'provider', value: provider),
 				  string(name: 'dryrun', value : "${dryrun}"),
-				  string(name: 'osver', value: "${job['osver']}"), // NOTE change of job params
+				  string(name: 'osver', value: "${job['osver']}"),
 				  string(name: 'zstream', value: "${job['zstream']}"),
 				  string(name: 'upstream', value: "${job['upstream']}"),
 				  string(name: 'testlist', value: "${testlist}"),
