@@ -199,8 +199,12 @@ for i in $ALLNODES; do
    ifaces=3
   ;;
  esac
+ # get ifconfig output in one session, retry when failed
+ while ! IFCONFIGOUT="$(ssh $i ifconfig)"; do
+  sleep 1
+ done
  for x in $(seq 0 $ifaces); do
-  mac="$(ssh $i ifconfig eth$x | grep ether | awk '{print $2}')"
+  mac="$(sed -n '/eth'$x':/,/^$/p' <<< "$IFCONFIGOUT" | grep ether | awk '{print $2}')"
   sed -i -e 's#@'$i'-eth'$x'@#'$mac'#g' "$DEPLOYDIR/configs/anvil_striker_auto.cfg"
  done
 done
