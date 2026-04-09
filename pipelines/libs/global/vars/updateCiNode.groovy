@@ -9,52 +9,54 @@ def call(String agentName, Map info)
     node("${agentName}") {
 
 	try {
-	    info['stages_run']++;
-	    // Some things don't need to run on the 'built-in' Jenkins node
-	    if (agentName != 'built-in') {
-		// Update Jenkins node labels from getNodes()
-		// - this preserves 'down'
-		updateLabels(info)
+	    runWithArtifacts(info, "update-ci-tools_${agentName}.log", {
+		info['stages_run']++;
+		// Some things don't need to run on the 'built-in' Jenkins node
+		if (agentName != 'built-in') {
+		    // Update Jenkins node labels from getNodes()
+		    // - this preserves 'down'
+		    updateLabels(info)
+		    if (params.reinstall == '1') {
+			sh '''
+                             rm -f /bin/citbash
+                           '''
+		    }
+		}
+
+		// Clear out ci-tools
 		if (params.reinstall == '1') {
 		    sh '''
-                     rm -f /bin/citbash
-                   '''
+                         rm -rf $HOME/ci-tools
+                       '''
 		}
-	    }
 
-	    // Clear out ci-tools
-	    if (params.reinstall == '1') {
+		// Update them
 		sh '''
-                 rm -rf $HOME/ci-tools
-               '''
-	    }
+                     if [ -d $HOME/ci-tools ]; then
+                     cd $HOME/ci-tools
+                     git pull
+                   else
+                     cd $HOME
+                     git clone https://github.com/kronosnet/ci-tools.git
+                   fi
+                   '''
 
-	    // Update them
-	    sh '''
-             if [ -d $HOME/ci-tools ]; then
-               cd $HOME/ci-tools
-               git pull
-             else
-                cd $HOME
-                git clone https://github.com/kronosnet/ci-tools.git
-             fi
-           '''
-
-	    // Jenkins init script needs to live in Jenkins $HOME
-	    if (agentName == 'built-in') {
-		sh '''
-                 cp $HOME/ci-tools/init.groovy $HOME
-               '''
-	    } else {
-		// built-in runs as Jenkins user so can't write to /bin (see also above)
-		sh '''
-                 if [ ! -f /bin/citbash ]; then
-                   ln -sf `which bash` /bin/citbash
-                 fi
-               '''
-	    }
+		// Jenkins init script needs to live in Jenkins $HOME
+		if (agentName == 'built-in') {
+		    sh '''
+                         cp $HOME/ci-tools/init.groovy $HOME
+                       '''
+		} else {
+		    // built-in runs as Jenkins user so can't write to /bin (see also above)
+		    sh '''
+                         if [ ! -f /bin/citbash ]; then
+                           ln -sf `which bash` /bin/citbash
+                         fi
+                       '''
+		}
+	    })
 	}
-	// Catch any exceptions and record them 
+	// Catch any exceptions and record them
 	catch (e) {
 	    info['stages_fail'] += 1
 	    info['stages_fail_nodes'] += "${agentName} "
